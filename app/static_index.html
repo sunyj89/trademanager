@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TradeManager MVP 工作台</title>
+  <style>
+    :root { --bg:#f3f5f9; --card:#fff; --text:#1f2937; --muted:#6b7280; --line:#e5e7eb; --pri:#2563eb; --ok:#16a34a; --err:#dc2626; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family: Inter, Arial, sans-serif; background:var(--bg); color:var(--text); }
+    header { background:#111827; color:#fff; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; }
+    .container { max-width:1320px; margin:0 auto; padding:18px; }
+    .tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+    .tab { border:1px solid var(--line); padding:8px 12px; border-radius:10px; background:#fff; cursor:pointer; font-size:13px; }
+    .tab.active { background:var(--pri); color:#fff; border-color:var(--pri); }
+    .panel { display:none; }
+    .panel.active { display:block; }
+    .grid { display:grid; gap:14px; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); }
+    .card { background:var(--card); border-radius:12px; padding:14px; box-shadow:0 2px 10px rgba(0,0,0,.05); }
+    .title { font-size:12px; color:var(--muted); margin-bottom:6px; }
+    .value { font-size:26px; font-weight:700; }
+    h2 { margin:8px 0 10px; font-size:17px; }
+    form { display:grid; gap:8px; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); margin-bottom:12px; }
+    input, select, button { border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:13px; }
+    button { background:var(--pri); color:#fff; cursor:pointer; }
+    .row { display:grid; gap:14px; grid-template-columns:1fr 1fr; }
+    table { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; }
+    th,td { text-align:left; padding:9px 10px; border-bottom:1px solid #eef2f7; font-size:13px; }
+    th { background:#f8fafc; color:var(--muted); font-weight:600; }
+    .muted { color:var(--muted); font-size:12px; }
+    .pill { display:inline-block; border-radius:999px; padding:2px 8px; background:#e5e7eb; font-size:12px; }
+    .notice { margin:0 0 12px; padding:10px 12px; border-radius:8px; font-size:13px; display:none; }
+    .notice.ok { display:block; background:#ecfdf3; color:var(--ok); border:1px solid #86efac; }
+    .notice.err { display:block; background:#fef2f2; color:var(--err); border:1px solid #fca5a5; }
+    @media (max-width: 980px){ .row { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<header>
+  <div><strong>TradeManager MVP 工作台</strong></div>
+  <div class="muted" style="color:#c7d2fe">连续推进版：模块全覆盖操作台</div>
+</header>
+
+<div class="container">
+  <div id="notice" class="notice"></div>
+  <div class="tabs" id="tabs"></div>
+
+  <section class="panel active" data-panel="dashboard">
+    <h2>经营总览</h2>
+    <div class="grid">
+      <div class="card"><div class="title">合同总数</div><div class="value" id="kpi_contract_count">-</div></div>
+      <div class="card"><div class="title">回款笔数</div><div class="value" id="kpi_payment_count">-</div></div>
+      <div class="card"><div class="title">合同总额</div><div class="value" id="kpi_contract_amount">-</div></div>
+      <div class="card"><div class="title">回款总额</div><div class="value" id="kpi_payment_amount">-</div></div>
+      <div class="card"><div class="title">利润总额</div><div class="value" id="kpi_profit">-</div></div>
+    </div>
+    <div style="margin:10px 0 6px; display:flex; gap:8px; flex-wrap:wrap;">
+      <button id="btn_bootstrap_demo" type="button">一键重置并注入演示数据</button>
+      <button id="btn_seed_demo" type="button" style="background:#1d4ed8">仅注入演示数据</button>
+      <button id="btn_reset_demo" type="button" style="background:#374151">清空所有数据</button>
+    </div>
+    <div class="muted" style="margin-bottom:8px;">用于本地快速体验，不建议在生产环境使用。</div>
+
+    <div class="row" style="margin-top:14px;">
+      <div>
+        <h2>销售漏斗</h2>
+        <table><thead><tr><th>阶段</th><th>数量</th><th>预计金额</th></tr></thead><tbody id="pipeline_body"></tbody></table>
+      </div>
+      <div>
+        <h2>回款进度</h2>
+        <table><thead><tr><th>合同</th><th>合同额</th><th>已回款</th><th>进度</th></tr></thead><tbody id="collection_body"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="customers">
+    <h2>客户管理</h2>
+    <form id="form_customer">
+      <input name="name" placeholder="客户名称" required>
+      <input name="country" placeholder="国家" required>
+      <input name="source_channel" placeholder="来源渠道" required>
+      <input name="owner" placeholder="负责人" required>
+      <button type="submit">新增客户</button>
+    </form>
+    <table><thead><tr><th>ID</th><th>客户</th><th>国家</th><th>来源</th><th>负责人</th></tr></thead><tbody id="customers_body"></tbody></table>
+  </section>
+
+  <section class="panel" data-panel="agents">
+    <h2>代理商管理</h2>
+    <form id="form_agent">
+      <input name="name" placeholder="代理商名称" required>
+      <input name="country" placeholder="国家" required>
+      <input name="contact" placeholder="联系方式" required>
+      <input name="default_commission_rate" type="number" step="0.01" placeholder="默认佣金比例" value="0.05" required>
+      <button type="submit">新增代理商</button>
+    </form>
+    <table><thead><tr><th>ID</th><th>代理商</th><th>国家</th><th>联系方式</th><th>默认佣金</th></tr></thead><tbody id="agents_body"></tbody></table>
+  </section>
+
+  <section class="panel" data-panel="leads">
+    <h2>线索管理（含转化）</h2>
+    <form id="form_lead">
+      <input name="source" placeholder="来源" required>
+      <input name="company" placeholder="公司" required>
+      <input name="contact_name" placeholder="联系人" required>
+      <input name="product_interest" placeholder="意向产品" required>
+      <input name="owner" placeholder="负责人" required>
+      <button type="submit">新增线索</button>
+    </form>
+    <form id="form_lead_convert">
+      <input name="lead_id" type="number" placeholder="线索ID" required>
+      <input name="country" placeholder="国家(可选)">
+      <input name="expected_amount" type="number" step="0.01" placeholder="转化商机预计金额">
+      <select name="create_opportunity"><option value="true">转化并创建商机</option><option value="false">仅转化客户</option></select>
+      <button type="submit">执行线索转化</button>
+    </form>
+    <table><thead><tr><th>ID</th><th>公司</th><th>来源</th><th>意向产品</th><th>状态</th></tr></thead><tbody id="leads_body"></tbody></table>
+  </section>
+
+  <section class="panel" data-panel="opportunities">
+    <h2>商机管理（含赢单/丢单）</h2>
+    <form id="form_opportunity">
+      <input name="customer_id" type="number" placeholder="客户ID" required>
+      <input name="agent_id" type="number" placeholder="代理商ID(可空)">
+      <input name="product" placeholder="产品" required>
+      <input name="expected_amount" type="number" step="0.01" placeholder="预计金额" required>
+      <input name="stage" placeholder="阶段(如 proposal)">
+      <button type="submit">新增商机</button>
+    </form>
+    <form id="form_opp_win">
+      <input name="opportunity_id" type="number" placeholder="商机ID" required>
+      <input name="contract_no" placeholder="合同号" required>
+      <input name="amount" type="number" step="0.01" placeholder="合同金额" required>
+      <input name="currency" placeholder="币种" value="USD">
+      <button type="submit">标记赢单并建合同</button>
+    </form>
+    <form id="form_opp_lost">
+      <input name="opportunity_id" type="number" placeholder="商机ID" required>
+      <input name="loss_reason" placeholder="丢单原因" required>
+      <button type="submit">标记丢单</button>
+    </form>
+    <table><thead><tr><th>ID</th><th>客户ID</th><th>代理ID</th><th>产品</th><th>阶段</th><th>预计金额</th><th>丢单原因</th></tr></thead><tbody id="opps_body"></tbody></table>
+  </section>
+
+  <section class="panel" data-panel="contracts">
+    <h2>合同管理（含状态流转）</h2>
+    <form id="form_contract">
+      <input name="contract_no" placeholder="合同号" required>
+      <input name="customer_id" type="number" placeholder="客户ID" required>
+      <input name="opportunity_id" type="number" placeholder="商机ID(可空)">
+      <input name="amount" type="number" step="0.01" placeholder="合同金额" required>
+      <input name="currency" placeholder="币种" value="USD">
+      <select name="status"><option>signed</option><option>completed</option><option>cancelled</option></select>
+      <button type="submit">新增合同</button>
+    </form>
+    <form id="form_contract_status">
+      <input name="contract_id" type="number" placeholder="合同ID" required>
+      <select name="status"><option>signed</option><option>completed</option><option>cancelled</option></select>
+      <button type="submit">更新合同状态</button>
+    </form>
+    <table><thead><tr><th>ID</th><th>合同号</th><th>客户ID</th><th>金额</th><th>状态</th></tr></thead><tbody id="contracts_body"></tbody></table>
+  </section>
+
+  <section class="panel" data-panel="payments">
+    <h2>回款管理</h2>
+    <form id="form_payment">
+      <input name="contract_id" type="number" placeholder="合同ID" required>
+      <input name="received_at" placeholder="到账时间(ISO，可空自动当前)">
+      <input name="amount" type="number" step="0.01" placeholder="回款金额" required>
+      <input name="profit" type="number" step="0.01" placeholder="利润(可空)">
+      <button type="submit">新增回款</button>
+    </form>
+    <table><thead><tr><th>ID</th><th>合同ID</th><th>到账时间</th><th>金额</th><th>利润</th></tr></thead><tbody id="payments_body"></tbody></table>
+  </section>
+
+  <section class="panel" data-panel="contacts">
+    <h2>联系人管理</h2>
+    <form id="form_contact">
+      <input name="customer_id" type="number" placeholder="客户ID" required>
+      <input name="name" placeholder="联系人姓名" required>
+      <input name="title" placeholder="职位">
+      <input name="email" placeholder="邮箱">
+      <button type="submit">新增联系人</button>
+    </form>
+    <table><thead><tr><th>ID</th><th>客户ID</th><th>姓名</th><th>职位</th><th>邮箱</th></tr></thead><tbody id="contacts_body"></tbody></table>
+  </section>
+
+  <section class="panel" data-panel="followups">
+    <h2>跟进管理</h2>
+    <form id="form_followup">
+      <input name="method" placeholder="方式(如 email)" required>
+      <input name="content" placeholder="内容" required>
+      <input name="owner" placeholder="跟进人" required>
+      <input name="lead_id" type="number" placeholder="线索ID(三选一)">
+      <input name="customer_id" type="number" placeholder="客户ID(三选一)">
+      <input name="opportunity_id" type="number" placeholder="商机ID(三选一)">
+      <button type="submit">新增跟进</button>
+    </form>
+    <table><thead><tr><th>ID</th><th>方式</th><th>内容</th><th>跟进人</th><th>关联</th></tr></thead><tbody id="followups_body"></tbody></table>
+  </section>
+
+  <section class="panel" data-panel="reports">
+    <h2>报表接口清单</h2>
+    <table><thead><tr><th>报表</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><span class="pill">/reports/profit-summary</span></td><td>利润汇总</td></tr>
+        <tr><td><span class="pill">/reports/pipeline-summary</span></td><td>销售漏斗</td></tr>
+        <tr><td><span class="pill">/reports/customer-value-summary</span></td><td>客户价值</td></tr>
+        <tr><td><span class="pill">/reports/agent-commission-summary</span></td><td>代理佣金</td></tr>
+        <tr><td><span class="pill">/reports/collection-progress-summary</span></td><td>回款进度</td></tr>
+        <tr><td><span class="pill">/reports/contract-status-summary</span></td><td>合同状态分布</td></tr>
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<script>
+const tabs = [
+  ['dashboard','经营总览'],['customers','客户'],['agents','代理商'],['leads','线索'],['opportunities','商机'],
+  ['contracts','合同'],['payments','回款'],['contacts','联系人'],['followups','跟进'],['reports','报表']
+];
+const tabsEl = document.getElementById('tabs');
+tabs.forEach(([k,n],i)=>{const b=document.createElement('button');b.className='tab'+(i===0?' active':'');b.textContent=n;b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelector(`[data-panel="${k}"]`).classList.add('active');};tabsEl.appendChild(b);});
+
+const q=id=>document.getElementById(id);const m=n=>Number(n||0).toLocaleString('zh-CN',{maximumFractionDigits:2});const td=x=>x??'-';
+function notice(msg,type='ok'){const el=q('notice');el.className='notice '+type;el.textContent=msg;setTimeout(()=>{el.className='notice';el.textContent='';},3500);}
+async function j(url,opt){const r=await fetch(url,opt);if(!r.ok){throw new Error(await r.text());}return r.json();}
+function formObj(form){const fd=new FormData(form);const o={};for(const[k,v]of fd.entries())o[k]=v;return o;}
+
+async function loadDashboard(){const [profit,pipeline,collection]=await Promise.all([j('/reports/profit-summary'),j('/reports/pipeline-summary'),j('/reports/collection-progress-summary')]);q('kpi_contract_count').textContent=td(profit.contract_count);q('kpi_payment_count').textContent=td(profit.payment_count);q('kpi_contract_amount').textContent=m(profit.total_contract_amount);q('kpi_payment_amount').textContent=m(profit.total_payment_amount);q('kpi_profit').textContent=m(profit.total_profit);q('pipeline_body').innerHTML=(pipeline.items||[]).map(i=>`<tr><td><span class='pill'>${i.stage}</span></td><td>${i.count}</td><td>${m(i.total_expected_amount)}</td></tr>`).join('')||'<tr><td colspan="3" class="muted">暂无数据</td></tr>';q('collection_body').innerHTML=(collection.items||[]).slice(0,8).map(i=>`<tr><td>${i.contract_no}</td><td>${m(i.contract_amount)}</td><td>${m(i.paid_amount)}</td><td>${(i.progress_ratio*100).toFixed(1)}%</td></tr>`).join('')||'<tr><td colspan="4" class="muted">暂无数据</td></tr>';}
+async function loadCustomers(){const d=await j('/customers?limit=20&offset=0');q('customers_body').innerHTML=d.map(i=>`<tr><td>${i.id}</td><td>${i.name}</td><td>${i.country}</td><td>${i.source_channel}</td><td>${i.owner}</td></tr>`).join('');}
+async function loadAgents(){const d=await j('/agents?limit=20&offset=0');q('agents_body').innerHTML=d.map(i=>`<tr><td>${i.id}</td><td>${i.name}</td><td>${i.country}</td><td>${i.contact}</td><td>${i.default_commission_rate}</td></tr>`).join('');}
+async function loadLeads(){const d=await j('/leads?limit=20&offset=0');q('leads_body').innerHTML=d.map(i=>`<tr><td>${i.id}</td><td>${i.company}</td><td>${i.source}</td><td>${i.product_interest}</td><td>${i.status}</td></tr>`).join('');}
+async function loadOpps(){const d=await j('/opportunities?limit=20&offset=0');q('opps_body').innerHTML=d.map(i=>`<tr><td>${i.id}</td><td>${i.customer_id}</td><td>${td(i.agent_id)}</td><td>${i.product}</td><td>${i.stage}</td><td>${m(i.expected_amount)}</td><td>${td(i.loss_reason)}</td></tr>`).join('');}
+async function loadContracts(){const d=await j('/contracts?limit=20&offset=0');q('contracts_body').innerHTML=d.map(i=>`<tr><td>${i.id}</td><td>${i.contract_no}</td><td>${i.customer_id}</td><td>${m(i.amount)}</td><td>${i.status}</td></tr>`).join('');}
+async function loadPayments(){const d=await j('/payments?limit=20&offset=0');q('payments_body').innerHTML=d.map(i=>`<tr><td>${i.id}</td><td>${i.contract_id}</td><td>${String(i.received_at).slice(0,19)}</td><td>${m(i.amount)}</td><td>${m(i.profit)}</td></tr>`).join('');}
+async function loadContacts(){const d=await j('/contacts?limit=20&offset=0');q('contacts_body').innerHTML=d.map(i=>`<tr><td>${i.id}</td><td>${i.customer_id}</td><td>${i.name}</td><td>${td(i.title)}</td><td>${td(i.email)}</td></tr>`).join('');}
+async function loadFollowups(){const d=await j('/followups?limit=20&offset=0');q('followups_body').innerHTML=d.map(i=>{const target=i.lead_id?`lead:${i.lead_id}`:i.customer_id?`customer:${i.customer_id}`:`opportunity:${i.opportunity_id}`;return `<tr><td>${i.id}</td><td>${i.method}</td><td>${i.content}</td><td>${i.owner}</td><td>${target}</td></tr>`;}).join('');}
+async function refreshAll(){await Promise.all([loadDashboard(),loadCustomers(),loadAgents(),loadLeads(),loadOpps(),loadContracts(),loadPayments(),loadContacts(),loadFollowups()]);}
+
+
+q('btn_bootstrap_demo').onclick=async ()=>{try{await j('/demo/bootstrap',{method:'POST'});await refreshAll();notice('已完成重置并注入演示数据');}catch(err){notice('一键注入失败: '+err.message,'err');}};
+q('btn_seed_demo').onclick=async ()=>{try{await j('/demo/seed',{method:'POST'});await refreshAll();notice('已注入演示数据');}catch(err){notice('注入演示数据失败: '+err.message,'err');}};
+q('btn_reset_demo').onclick=async ()=>{try{await j('/demo/reset',{method:'POST'});await refreshAll();notice('已清空所有数据');}catch(err){notice('清空数据失败: '+err.message,'err');}};
+
+q('form_customer').onsubmit=async e=>{e.preventDefault();try{const o=formObj(e.target);o.customer_type='direct';o.level='B';o.status='active';await j('/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});e.target.reset();await refreshAll();notice('客户新增成功');}catch(err){notice('客户新增失败: '+err.message,'err');}};
+q('form_agent').onsubmit=async e=>{e.preventDefault();try{const o=formObj(e.target);o.default_commission_rate=Number(o.default_commission_rate);o.status='active';await j('/agents',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});e.target.reset();await refreshAll();notice('代理商新增成功');}catch(err){notice('代理商新增失败: '+err.message,'err');}};
+q('form_lead').onsubmit=async e=>{e.preventDefault();try{const o=formObj(e.target);o.status='new';await j('/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});e.target.reset();await refreshAll();notice('线索新增成功');}catch(err){notice('线索新增失败: '+err.message,'err');}};
+q('form_lead_convert').onsubmit=async e=>{e.preventDefault();try{const o=formObj(e.target);const id=Number(o.lead_id);delete o.lead_id;o.create_opportunity=o.create_opportunity==='true';if(o.expected_amount)o.expected_amount=Number(o.expected_amount);else delete o.expected_amount;if(!o.country)delete o.country;await j(`/leads/${id}/convert`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});e.target.reset();await refreshAll();notice('线索转化成功');}catch(err){notice('线索转化失败: '+err.message,'err');}};
+q('form_opportunity').onsubmit=async e=>{e.preventDefault();try{const o=formObj(e.target);o.customer_id=Number(o.customer_id);if(o.agent_id)o.agent_id=Number(o.agent_id);else delete o.agent_id;o.expected_amount=Number(o.expected_amount);if(!o.stage)o.stage='qualification';await j('/opportunities',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});e.target.reset();await refreshAll();notice('商机新增成功');}catch(err){notice('商机新增失败: '+err.message,'err');}};
+q('form_opp_win').onsubmit=async e=>{e.preventDefault();try{const o=formObj(e.target);const id=Number(o.opportunity_id);delete o.opportunity_id;o.amount=Number(o.amount);await j(`/opportunities/${id}/mark-won`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});e.target.reset();await refreshAll();notice('商机赢单成功');}catch(err){notice('商机赢单失败: '+err.message,'err');}};
+q('form_opp_lost').onsubmit=async e=>{e.preventDefault();try{const o=formObj(e.target);const id=Number(o.opportunity_id);delete o.opportunity_id;await j(`/opportunities/${id}/mark-lost`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});e.target.reset();await refreshAll();notice('商机丢单成功');}catch(err){notice('商机丢单失败: '+err.message,'err');}};
+q('form_contract').onsubmit=async e=>{e.preventDefault();try{const o=formObj(e.target);o.customer_id=Number(o.customer_id);if(!o.opportunity_id)delete o.opportunity_id;else o.opportunity_id=Number(o.opportunity_id);o.amount=Number(o.amount);await j('/contracts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});e.target.reset();await refreshAll();notice('合同新增成功');}catch(err){notice('合同新增失败: '+err.message,'err');}};
+q('form_contract_status').onsubmit=async e=>{e.preventDefault();try{const o=formObj(e.target);const id=Number(o.contract_id);delete o.contract_id;await j(`/contracts/${id}/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});e.target.reset();await refreshAll();notice('合同状态更新成功');}catch(err){notice('合同状态更新失败: '+err.message,'err');}};
+q('form_payment').onsubmit=async e=>{e.preventDefault();try{const o=formObj(e.target);o.contract_id=Number(o.contract_id);o.amount=Number(o.amount);if(o.profit)o.profit=Number(o.profit);else delete o.profit;if(!o.received_at)o.received_at=new Date().toISOString();await j('/payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});e.target.reset();await refreshAll();notice('回款新增成功');}catch(err){notice('回款新增失败: '+err.message,'err');}};
+q('form_contact').onsubmit=async e=>{e.preventDefault();try{const o=formObj(e.target);o.customer_id=Number(o.customer_id);await j('/contacts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});e.target.reset();await refreshAll();notice('联系人新增成功');}catch(err){notice('联系人新增失败: '+err.message,'err');}};
+q('form_followup').onsubmit=async e=>{e.preventDefault();try{const o=formObj(e.target);['lead_id','customer_id','opportunity_id'].forEach(k=>{if(o[k])o[k]=Number(o[k]);else delete o[k];});await j('/followups',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});e.target.reset();await refreshAll();notice('跟进新增成功');}catch(err){notice('跟进新增失败: '+err.message,'err');}};
+
+(async function init(){try{await refreshAll();}catch(err){notice('初始化加载失败: '+err.message,'err');}})();
+</script>
+</body>
+</html>
