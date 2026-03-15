@@ -3,3 +3,5 @@ __pycache__/
 .venv/
 trademanager.db
 .pytest_cache/
+*.egg-info/
+uvicorn*.log
