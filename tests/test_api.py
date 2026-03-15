@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -11,6 +11,10 @@ client = TestClient(app)
 
 def _uniq(prefix: str) -> str:
     return f"{prefix}-{uuid4().hex[:8]}"
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def test_health():
@@ -77,7 +81,7 @@ def test_contract_payment_flow():
         "/payments",
         json={
             "contract_id": contract_id,
-            "received_at": datetime.utcnow().isoformat(),
+            "received_at": _utc_now_iso(),
             "amount": 20000,
             "exchange_rate": 7.1,
             "settled_amount": 142000,
@@ -313,7 +317,7 @@ def test_customer_value_summary_endpoint():
         "/payments",
         json={
             "contract_id": contract_id,
-            "received_at": datetime.utcnow().isoformat(),
+            "received_at": _utc_now_iso(),
             "amount": 10000,
             "profit": 1800,
         },
@@ -354,7 +358,7 @@ def test_cannot_add_payment_to_cancelled_contract():
         "/payments",
         json={
             "contract_id": contract_id,
-            "received_at": datetime.utcnow().isoformat(),
+            "received_at": _utc_now_iso(),
             "amount": 1000,
         },
     )
@@ -466,6 +470,22 @@ def test_contract_status_transition_rules():
     )
     contract_id = contract.json()["id"]
 
+    complete_before_payment = client.post(
+        f"/contracts/{contract_id}/status",
+        json={"status": "completed"},
+    )
+    assert complete_before_payment.status_code == 409
+
+    pay = client.post(
+        "/payments",
+        json={
+            "contract_id": contract_id,
+            "received_at": _utc_now_iso(),
+            "amount": 14000,
+        },
+    )
+    assert pay.status_code == 200
+
     complete = client.post(f"/contracts/{contract_id}/status", json={"status": "completed"})
     assert complete.status_code == 200
 
@@ -502,7 +522,7 @@ def test_collection_progress_summary_endpoint():
         "/payments",
         json={
             "contract_id": contract_id,
-            "received_at": datetime.utcnow().isoformat(),
+            "received_at": _utc_now_iso(),
             "amount": 12000,
         },
     )
@@ -542,7 +562,7 @@ def test_payment_cannot_exceed_contract_amount():
         "/payments",
         json={
             "contract_id": contract_id,
-            "received_at": datetime.utcnow().isoformat(),
+            "received_at": _utc_now_iso(),
             "amount": 8000,
         },
     )
@@ -552,7 +572,7 @@ def test_payment_cannot_exceed_contract_amount():
         "/payments",
         json={
             "contract_id": contract_id,
-            "received_at": datetime.utcnow().isoformat(),
+            "received_at": _utc_now_iso(),
             "amount": 3000,
         },
     )
@@ -591,7 +611,7 @@ def test_contract_cannot_complete_before_full_payment_and_status_report():
         "/payments",
         json={
             "contract_id": contract_id,
-            "received_at": datetime.utcnow().isoformat(),
+            "received_at": _utc_now_iso(),
             "amount": 20000,
         },
     )
